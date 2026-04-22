@@ -7,47 +7,6 @@ Original file is located at
     https://colab.research.google.com/drive/1-jk2A7W5FJZvu-bGeOIjFFcguNwK1BGR
 
 Name : Lakshita Aggarwal
-
-### **Technical Approach: The Self-Pruning Neural Network**
-
-[cite_start]In this implementation, I moved away from traditional post-training pruning in favor of a **differentiable architecture search** approach[cite: 53, 54, 55]. My strategy centers on three key pillars:
-
-* [cite_start]**Learnable Gating Mechanism**: Instead of using standard linear layers, I developed a custom `PrunableLinear` module[cite: 68, 69]. [cite_start]Each weight is multiplied by a "gate" derived from a learnable `gate_scores` parameter via a Sigmoid function[cite: 77, 79]. [cite_start]This ensures that the mask is continuous and differentiable, allowing the network to learn its own connectivity through standard backpropagation[cite: 82].
-* [cite_start]**Sparsity-Inducing Regularization**: To force the network to actually "turn off" connections, I implemented a custom loss function: $Total Loss = Classification Loss + \lambda \times Sparsity Loss$[cite: 87]. [cite_start]By using the $L1$ norm of the gate values as the sparsity penalty, I provide a constant pressure that drives non-essential gate scores toward zero[cite: 89, 90].
-* [cite_start]**Hard Thresholding for Evaluation**: While the training process uses "soft" gates, I evaluate the model’s success by applying a hard threshold of **1e-2**[cite: 101]. [cite_start]Any gate value below this is considered pruned, allowing for an accurate calculation of the final "sparsity level" percentage[cite: 101, 102].
-
-
-
-### **Key Assumptions**
-
-* [cite_start]**Initialization for Exploration**: I assumed that starting with gate scores that result in Sigmoid outputs near **1.0** (gates open) is optimal[cite: 77]. This allows the model to utilize the full capacity of the network during the early phase of training before the $L1$ penalty begins to prune the "weakest" connections.
-* **Uniform Sparsity Pressure**: I assumed a uniform $\lambda$ across all layers. [cite_start]While different layers may have different redundancies, a global hyperparameter provides a clear, controllable trade-off between total model parameters and accuracy[cite: 92, 93].
-* [cite_start]**Differentiability**: I assumed that the joint optimization of weights and gate parameters would converge using standard first-order optimizers like **Adam**[cite: 98].
-
-
-
-### **Edge Cases & Considerations**
-
-During development and testing, I identified several critical edge cases that influence the stability of this self-pruning system:
-
-* [cite_start]**Layer Collapse**: If the $\lambda$ hyperparameter is set too high, the sparsity penalty can dominate the classification loss early in training[cite: 93]. This can cause "layer collapse," where an entire layer is pruned to zero, permanently breaking the gradient flow and preventing the model from learning.
-* **Sigmoid Saturation**: Because the gates are controlled by a Sigmoid function, very high or very low `gate_scores` result in vanishing gradients. If a gate score is pushed too far into the negative, it becomes difficult for the network to "revive" that connection even if it becomes relevant later in training.
-* [cite_start]**Dead Neurons vs. Dead Weights**: My approach prunes individual weights[cite: 62]. However, an edge case exists where all weights leading into a specific neuron are pruned, but the bias remains. In a production environment, I would consider an additional penalty to prune entire neurons (rows/columns of the weight matrix) for better hardware acceleration.
-* [cite_start]**Threshold Sensitivity**: The final "Sparsity Level" is sensitive to the choice of the **1e-2** threshold[cite: 101]. I chose this value to represent a point where the weight's contribution to the activation is mathematically negligible.
-
-
-
-### **Results & Analysis**
-
-[cite_start]I tested the model across three different $\lambda$ values to observe the trade-off between performance and efficiency[cite: 104, 105]:
-
-| Lambda ($\lambda$) | Test Accuracy | Sparsity Level (%) |
-| :--- | :--- | :--- |
-| **1e-5 (Low)** | 52.4% | 12.1% |
-| **1e-4 (Medium)** | 48.1% | 64.5% |
-| **1e-3 (High)** | 31.2% | 94.2% |
-
-[cite_start]The distribution of final gate values confirms the success of the approach, showing a distinct bimodal pattern where the network has clearly separated "essential" weights from those it has chosen to prune[cite: 118].
 """
 
 import torch
